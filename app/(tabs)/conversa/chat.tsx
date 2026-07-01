@@ -1,8 +1,9 @@
 /**
  * Chat sobre a conversa importada.
  * O texto completo da conversa (com as transcrições disponíveis) vai como
- * contexto no system prompt; o modelo (llama-3.3-70b, 131k tokens) responde
- * com base nele.
+ * contexto no system prompt; a resposta vem do modelo do opencode (via bridge).
+ * O modelo e a janela de contexto dependem de qual modelo o opencode estiver
+ * configurado para usar no servidor, não de um modelo fixo do Groq.
  */
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -18,10 +19,10 @@ import { Link } from 'expo-router';
 
 import { Text, View } from '@/components/Themed';
 import { useConversa } from '@/lib/ConversaContext';
-import { chatCompletion, type ChatMessage, GroqApiError } from '@/lib/groq';
+import { chatViaBridge, type ChatMessage, OpencodeBridgeError } from '@/lib/opencode';
 
-// ~200k caracteres cobre boa parte do contexto de 131k tokens do modelo,
-// deixando espaço para o histórico do chat e a resposta.
+// Limite de caracteres do contexto enviado; deixa espaço para o histórico do
+// chat e a resposta dentro da janela do modelo configurado no opencode.
 const MAX_CONTEXT_CHARS = 200_000;
 
 type UiMessage = { id: string; role: 'user' | 'assistant'; content: string };
@@ -43,7 +44,7 @@ function buildSystemPrompt(transcriptText: string): string {
 }
 
 export default function ConversaChat() {
-  const { messages, transcriptText, apiKey } = useConversa();
+  const { messages, transcriptText, bridgeUrl } = useConversa();
   const [chat, setChat] = useState<UiMessage[]>([]);
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -53,8 +54,8 @@ export default function ConversaChat() {
   const enviar = useCallback(async () => {
     const pergunta = input.trim();
     if (!pergunta || enviando) return;
-    if (!apiKey) {
-      setErro('Configure a chave da API do Groq em "Config" antes de conversar.');
+    if (!bridgeUrl) {
+      setErro('Configure a URL do bridge opencode em "Config" antes de conversar.');
       return;
     }
 
@@ -70,15 +71,15 @@ export default function ConversaChat() {
         { role: 'system', content: buildSystemPrompt(transcriptText) },
         ...historico.map((m) => ({ role: m.role, content: m.content }) as ChatMessage),
       ];
-      const resposta = await chatCompletion(apiMessages, apiKey);
+      const resposta = await chatViaBridge(apiMessages, bridgeUrl);
       setChat((atual) => [...atual, { id: `a-${atual.length}`, role: 'assistant', content: resposta }]);
     } catch (e) {
-      setErro(e instanceof GroqApiError ? e.message : 'Falha ao consultar a API do Groq.');
+      setErro(e instanceof OpencodeBridgeError ? e.message : 'Falha ao consultar o bridge opencode.');
     } finally {
       setEnviando(false);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     }
-  }, [apiKey, chat, enviando, input, transcriptText]);
+  }, [bridgeUrl, chat, enviando, input, transcriptText]);
 
   if (messages.length === 0) {
     return (

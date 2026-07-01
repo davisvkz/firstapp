@@ -9,6 +9,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import type { WhatsAppMessage } from './whatsapp';
 
 const API_KEY_STORAGE_KEY = 'groq_api_key';
+const BRIDGE_URL_STORAGE_KEY = 'opencode_bridge_url';
 const CONVERSA_FILE_NAME = 'conversa.json';
 
 export async function getApiKey(): Promise<string | null> {
@@ -21,6 +22,18 @@ export async function setApiKey(value: string): Promise<void> {
     return;
   }
   await SecureStore.setItemAsync(API_KEY_STORAGE_KEY, value);
+}
+
+export async function getBridgeUrl(): Promise<string | null> {
+  return SecureStore.getItemAsync(BRIDGE_URL_STORAGE_KEY);
+}
+
+export async function setBridgeUrl(value: string): Promise<void> {
+  if (!value) {
+    await SecureStore.deleteItemAsync(BRIDGE_URL_STORAGE_KEY);
+    return;
+  }
+  await SecureStore.setItemAsync(BRIDGE_URL_STORAGE_KEY, value);
 }
 
 export type StoredConversa = {

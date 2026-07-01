@@ -8,12 +8,15 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 
 import { GroqApiError, transcribeAudio } from './groq';
+import { DEFAULT_BRIDGE_URL } from './opencode';
 import {
   clearConversa,
   getApiKey,
+  getBridgeUrl,
   loadConversa,
   saveConversa,
   setApiKey as persistApiKey,
+  setBridgeUrl as persistBridgeUrl,
   writeCacheAudio,
 } from './store';
 import {
@@ -40,11 +43,14 @@ type ConversaContextValue = {
   transcribeProgress: TranscribeProgress;
   apiKey: string | null;
   apiKeyReady: boolean;
+  bridgeUrl: string;
+  bridgeUrlReady: boolean;
   transcriptText: string;
   importZip: () => Promise<void>;
   transcribeAll: () => Promise<void>;
   reset: () => void;
   saveApiKey: (value: string) => Promise<void>;
+  saveBridgeUrl: (value: string) => Promise<void>;
 };
 
 const ConversaContext = createContext<ConversaContextValue | null>(null);
@@ -57,8 +63,10 @@ export function ConversaProvider({ children }: { children: React.ReactNode }) {
   const [transcribeProgress, setTranscribeProgress] = useState<TranscribeProgress>(null);
   const [apiKey, setApiKeyState] = useState<string | null>(null);
   const [apiKeyReady, setApiKeyReady] = useState(false);
+  const [bridgeUrl, setBridgeUrlState] = useState(DEFAULT_BRIDGE_URL);
+  const [bridgeUrlReady, setBridgeUrlReady] = useState(false);
 
-  // Carrega o que já foi importado/transcrito e a chave da API salvos de sessões anteriores.
+  // Carrega o que já foi importado/transcrito, a chave da API e a URL do bridge salvos de sessões anteriores.
   useEffect(() => {
     const stored = loadConversa();
     if (stored) {
@@ -69,6 +77,9 @@ export function ConversaProvider({ children }: { children: React.ReactNode }) {
     getApiKey()
       .then(setApiKeyState)
       .finally(() => setApiKeyReady(true));
+    getBridgeUrl()
+      .then((url) => setBridgeUrlState(url ?? DEFAULT_BRIDGE_URL))
+      .finally(() => setBridgeUrlReady(true));
   }, []);
 
   const importZip = useCallback(async () => {
@@ -155,6 +166,11 @@ export function ConversaProvider({ children }: { children: React.ReactNode }) {
     setApiKeyState(value || null);
   }, []);
 
+  const saveBridgeUrlValue = useCallback(async (value: string) => {
+    await persistBridgeUrl(value);
+    setBridgeUrlState(value);
+  }, []);
+
   const participants = useMemo(() => listParticipants(messages), [messages]);
   const audioFiles = useMemo(() => listAudioFiles(messages), [messages]);
   const transcriptText = useMemo(() => buildTranscriptText(messages, transcripts), [messages, transcripts]);
@@ -169,11 +185,14 @@ export function ConversaProvider({ children }: { children: React.ReactNode }) {
     transcribeProgress,
     apiKey,
     apiKeyReady,
+    bridgeUrl,
+    bridgeUrlReady,
     transcriptText,
     importZip,
     transcribeAll,
     reset,
     saveApiKey: saveApiKeyValue,
+    saveBridgeUrl: saveBridgeUrlValue,
   };
 
   return <ConversaContext.Provider value={value}>{children}</ConversaContext.Provider>;

@@ -1,6 +1,7 @@
 /**
- * Config — chave da API do Groq (usada para transcrever áudios com Whisper
- * e para o chat). Guardada com expo-secure-store, nunca no código.
+ * Config — chave da API do Groq (usada para transcrever áudios com Whisper)
+ * e a URL do bridge opencode (usada para o chat sobre a conversa).
+ * Guardadas com expo-secure-store, nunca no código.
  */
 import { useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity } from 'react-native';
@@ -11,23 +12,29 @@ import { useConversa } from '@/lib/ConversaContext';
 
 const GROQ_KEYS_URL = 'https://console.groq.com/keys';
 
-export default function ConversaConfig() {
-  const { apiKey, saveApiKey } = useConversa();
+export default function ConfigScreen() {
+  const { apiKey, saveApiKey, bridgeUrl, saveBridgeUrl } = useConversa();
   const [valor, setValor] = useState(apiKey ?? '');
+  const [urlBridge, setUrlBridge] = useState(bridgeUrl);
   const [salvo, setSalvo] = useState(false);
 
   async function salvar() {
-    await saveApiKey(valor.trim());
+    if (valor.trim()) {
+      await saveApiKey(valor.trim());
+    }
+    if (urlBridge.trim()) {
+      await saveBridgeUrl(urlBridge.trim());
+    }
     setSalvo(true);
     setTimeout(() => setSalvo(false), 2000);
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Chave da API do Groq</Text>
+      <Text style={styles.titulo}>Chave Groq (transcrição de áudio)</Text>
       <Text style={styles.descricao}>
-        Usada para transcrever os áudios (Whisper) e para o chat sobre a conversa. Fica salva
-        apenas neste aparelho.
+        Usada apenas para transcrever os áudios da conversa (Whisper). Fica salva apenas neste
+        aparelho.
       </Text>
 
       <TextInput
@@ -41,12 +48,29 @@ export default function ConversaConfig() {
         autoCorrect={false}
       />
 
-      <TouchableOpacity style={styles.btnSalvar} onPress={salvar} disabled={!valor.trim()}>
-        <Text style={styles.btnSalvarTexto}>{salvo ? '✅ Chave salva' : 'Salvar chave'}</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(GROQ_KEYS_URL)}>
         <Text style={styles.link}>Obter uma chave em console.groq.com/keys ↗</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.titulo}>URL do bridge opencode</Text>
+      <Text style={styles.descricao}>
+        Usada para o chat sobre a conversa. O processo do bridge precisa estar rodando e acessível
+        na mesma rede do celular.
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        value={urlBridge}
+        onChangeText={setUrlBridge}
+        placeholder="http://192.168.x.x:8787"
+        placeholderTextColor="#94a3b8"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+      />
+
+      <TouchableOpacity style={styles.btnSalvar} onPress={salvar}>
+        <Text style={styles.btnSalvarTexto}>{salvo ? '✅ Salvo' : 'Salvar'}</Text>
       </TouchableOpacity>
     </View>
   );
