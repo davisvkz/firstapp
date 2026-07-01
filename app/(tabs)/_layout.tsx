@@ -54,6 +54,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="conversa"
+        options={{
+          title: 'Conversa',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <TabBarIcon name="comments" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
